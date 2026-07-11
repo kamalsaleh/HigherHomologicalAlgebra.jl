@@ -1,0 +1,92 @@
+name: Run Julia Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  schedule:
+    - cron: "0 0 * * *"  # Run every day at midnight
+permissions:
+  contents: write
+
+# cancel runs for pull requests on force push
+# https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-using-a-fallback-value
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}-${{ github.run_attempt }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.package }} - Julia ${{ matrix.julia-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - TriangulatedCategories
+          - ComplexesCategories
+          - Bicomplexes
+          - HomotopyCategories
+          - DerivedCategories
+        julia-version:
+          - '1.12'
+          - 'nightly'
+        os:
+          - ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@v3
+        with:
+          version: ${{ matrix.julia-version }}
+      - name: Clone and install CAP_project.jl
+        run: |
+          git clone https://github.com/kamalsaleh/CAP_project.jl.git ../CAP_project.jl
+          make -C ../CAP_project.jl install
+      - name: Clone and install MatricesForHomalg.jl
+        run: |
+          git clone https://github.com/kamalsaleh/MatricesForHomalg.jl.git ../MatricesForHomalg.jl
+          julia -e 'using Pkg; Pkg.develop(path="../MatricesForHomalg.jl")'
+      - name: Clone and install CategoricalTowers.jl
+        run: |
+          git clone https://github.com/kamalsaleh/CategoricalTowers.jl.git ../CategoricalTowers.jl
+          make -C ../CategoricalTowers.jl install
+      - name: Install all packages
+        run: make install
+      - name: Set up Jupyter
+        run: pip install jupyter nbconvert --quiet
+      - name: Run tests
+        run: make -C ${{ matrix.package }} test
+      - name: Test notebooks
+        run: |
+          julia -e 'using Pkg; Pkg.add("Singular"); Pkg.add("IJulia"); using IJulia; installkernel("Julia")'
+          sed -i '/"--project=@\."/d' ~/.local/share/jupyter/kernels/julia-*/kernel.json
+          make -C ${{ matrix.package }} test-notebooks
+  update_subsplits:
+    name: Update subsplits
+    needs: test
+    runs-on: ubuntu-latest
+    if: false  # enable this job when you move the repository to homalg-project
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@v3
+        with:
+          version: '1.12'
+      - name: Install all packages
+        run: make install
+      - name: Run update_subsplits script
+        env:
+          JULIA_SUBSPLIT_TOKEN: ${{ secrets.SUBSPLIT_PUSH_SECRET }}
+        run: |
+          ./dev/update_subsplits.sh

@@ -1,0 +1,443 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# ComplexesCategories: Category of (co)chain complexes of an additive category
+#
+# Implementations
+#
+
+###############################
+#
+# Resolutions
+#
+###############################
+
+##
+@BindGlobal( "_complexes_QuasiIsomorphismFromProjectiveResolution",
+  
+  function( C )
+    local ch_cat, cat, u, zero_object, data, PC;
+    
+    ch_cat = CapCategory( C );
+    
+    cat = UnderlyingCategory( CapCategory( C ) );
+    
+    if (!( HasIsAbelianCategory( cat )
+              && IsAbelianCategory( cat )
+                && CanCompute( cat, "SomeProjectiveObject" )
+                  && CanCompute( cat, "EpimorphismFromSomeProjectiveObject" ) ))
+      
+      Error( "the category, ", "\033[34m", Name( cat ), "\033[0m", ", must be 'computable' abelian with enough projectives!\n" );
+      
+    end;
+    
+    u = UpperBound( C );
+    
+    if (u == infinity)
+      
+      Error( "the upper bound of the given cochain complex should be an integer!\n" );
+      
+    end;
+    
+    data =
+      AsZFunction(
+        function( k )
+          local h, m, iota, pi, p;
+          
+          if (k > u)
+            
+            return [ ZeroObjectFunctorial( cat ), UniversalMorphismFromZeroObject( cat, C[k] ), ZeroObjectFunctorial( cat ) ];
+            
+          else
+            
+            h = data[k+1][1];
+            
+            m = MorphismBetweenDirectSums( cat,
+                          [ [ h, -data[k+1][2] ],
+                            [ ZeroMorphism( cat, C[k], Range( h ) ), C^k ] ] );
+            
+            iota = KernelEmbedding( cat, m );
+            
+            pi = EpimorphismFromSomeProjectiveObject( cat, Source( iota ) );
+            
+            p = List( [ 1, 2 ], i -> ProjectionInFactorOfDirectSum( cat, [ Source( h ), C[k] ], i ) );
+            
+            return [ PreCompose( [ pi, iota, p[1] ] ), PreCompose( [ pi, iota, p[2] ] ), m ];
+            
+          end;
+          
+    end );
+    
+    PC = CreateComplex( ch_cat, ApplyMap( data, j -> j[1] ), -infinity, u );
+    
+    return CreateComplexMorphism( ch_cat, PC, ApplyMap( data, j -> j[2] ), C );
+    
+end );
+
+##
+@InstallMethod( QuasiIsomorphismFromProjectiveResolutionOp,
+      [ IsCochainComplex, IsBool ],
+      
+  function( C, bool )
+    local PC, nu;
+    
+    if (bool)
+      
+      nu = QuasiIsomorphismFromProjectiveResolution( C, false );
+      
+      PC = ProjectiveResolution( C, true );
+      
+      return CreateComplexMorphism( CapCategory( C ), PC, Morphisms( nu ), C );
+      
+    else
+      
+      return _complexes_QuasiIsomorphismFromProjectiveResolution( C );
+      
+    end;
+    
+end );
+
+##
+@InstallMethod( QuasiIsomorphismFromProjectiveResolution,
+      [ IsCochainComplex ],
+  
+  C -> QuasiIsomorphismFromProjectiveResolution( C, false )
+);
+
+##
+@InstallMethod( ProjectiveResolutionOp,
+      [ IsCochainComplex, IsBool ],
+      
+  function( C, bool )
+    local ch_cat, cat, PC, i;
+    
+    ch_cat = CapCategory( C );
+    
+    cat = UnderlyingCategory( ch_cat );
+    
+    if (bool)
+        
+        PC = ProjectiveResolution( C, false );
+        
+        i = LowerBound( C ) - 1;
+        
+        while @not IsZeroForObjects( cat, PC[i] )
+            i = i - 1;
+        end;
+        
+        return CreateComplex( ch_cat, Objects( PC ), Differentials( PC ), i + 1, UpperBound( PC ) );
+        
+    else
+        
+        return Source( QuasiIsomorphismFromProjectiveResolution( C, false ) );
+        
+    end;
+    
+end );
+
+##
+@InstallMethod( ProjectiveResolution,
+      [ IsCochainComplex ],
+  
+  C -> ProjectiveResolution( C, false )
+);
+
+##
+@InstallMethod( MorphismBetweenProjectiveResolutionsOp,
+          [ IsCochainMorphism, IsBool ],
+  
+  function( phi, bool )
+    local ch_cat, cat, B, C, PB, PC, morphisms;
+    
+    ch_cat = CapCategory( phi );
+    cat = UnderlyingCategory( ch_cat );
+    
+    B = Source( phi );
+    C = Range( phi );
+    
+    PB = ProjectiveResolution( B, bool );
+    PC = ProjectiveResolution( C, bool );
+    
+    morphisms = AsZFunction(
+      function( k )
+        local mB, mC, m, kappa, pi_B, pi_C;
+        
+        if (k > UpperBound( phi ))
+          
+          return ZeroMorphism( cat, PB[k], PC[k] );
+          
+        else
+          
+          mB = BaseZFunctions( Differentials( PB ) )[1][k][3];
+          mC = BaseZFunctions( Differentials( PC ) )[1][k][3];
+          
+          m = DirectSumFunctorialWithGivenDirectSums( cat, Source( mB ), [ morphisms[k+1], phi[k] ], Source( mC ) );
+          
+          kappa = KernelObjectFunctorial( cat, mB, m, mC );
+          
+          pi_B = EpimorphismFromSomeProjectiveObject( Source( kappa ) );
+          pi_C = EpimorphismFromSomeProjectiveObject( Range( kappa ) );
+          
+          return ProjectiveLift( cat, PreCompose( cat, pi_B, kappa ), pi_C );
+          
+         end;
+         
+      end );
+      
+    return CreateComplexMorphism( ch_cat, PB, morphisms, PC );
+    
+end );
+
+##
+@InstallMethod( MorphismBetweenProjectiveResolutions,
+          [ IsCochainMorphism ],
+  
+  phi -> MorphismBetweenProjectiveResolutions( phi, false )
+);
+
+##
+@InstallMethod( QuasiIsomorphismIntoInjectiveResolution,
+          [ IsCochainComplex ],
+  
+  function ( C )
+    local C_op, qiso;
+    
+    C_op = AsComplexOverOppositeCategory( C );
+    
+    qiso = QuasiIsomorphismFromProjectiveResolution( C_op );
+    
+    return AsComplexMorphismOverOppositeCategory( qiso );
+    
+end );
+
+##
+@InstallMethod( QuasiIsomorphismIntoInjectiveResolutionOp,
+          [ IsCochainComplex, IsBool ],
+  
+  function ( C, bool )
+    local C_op, qiso;
+    
+    C_op = AsComplexOverOppositeCategory( C );
+    
+    qiso = CallFuncListAtRuntime( QuasiIsomorphismFromProjectiveResolution, [ C_op, bool ] );
+    
+    return AsComplexMorphismOverOppositeCategory( qiso );
+    
+end );
+
+##
+@InstallMethod( InjectiveResolution,
+          [ IsCochainComplex ],
+  
+  function ( C )
+    local C_op, proj_res;
+    
+    C_op = AsComplexOverOppositeCategory( C );
+    
+    proj_res = CallFuncListAtRuntime( ProjectiveResolution, [ C_op ] );
+    
+    return AsComplexOverOppositeCategory( proj_res );
+    
+end );
+
+##
+@InstallMethod( InjectiveResolutionOp,
+          [ IsCochainComplex, IsBool ],
+  
+  function ( C, bool )
+    local C_op, proj_res;
+    
+    C_op = AsComplexOverOppositeCategory( C );
+    
+    proj_res = CallFuncListAtRuntime( ProjectiveResolution, [ C_op, bool ] );
+    
+    return AsComplexOverOppositeCategory( proj_res );
+    
+end );
+
+##
+@InstallMethod( MorphismBetweenInjectiveResolutions,
+          [ IsCochainMorphism ],
+  
+  function ( phi )
+    local phi_op, proj_mor;
+    
+    phi_op = AsComplexMorphismOverOppositeCategory( phi );
+    
+    proj_mor = CallFuncListAtRuntime( MorphismBetweenProjectiveResolutions, [ phi_op ] );
+    
+    return AsComplexMorphismOverOppositeCategory( proj_mor );
+    
+end );
+
+##
+@InstallMethod( MorphismBetweenInjectiveResolutionsOp,
+          [ IsCochainMorphism, IsBool ],
+  
+  function ( phi, bool )
+    local phi_op, proj_mor;
+    
+    phi_op = AsComplexMorphismOverOppositeCategory( phi );
+    
+    proj_mor = CallFuncListAtRuntime( MorphismBetweenProjectiveResolutions, [ phi_op, bool ] );
+    
+    return AsComplexMorphismOverOppositeCategory( proj_mor );
+    
+end );
+
+
+##########################################################
+#
+# projective resolutions of cells in abelian categories
+#
+##########################################################
+
+##
+@InstallMethod( ProjectiveResolution,
+       [ IsCapCategoryObject, IsBool ],
+  
+  function ( o, bool )
+    local cat, ch_cat, iota, delta_m1, upper_func, lower_func, diffs, P, i;
+    
+    cat = CapCategory( o );
+    
+    if (!( HasIsAbelianCategory( cat ) && IsAbelianCategory( cat )
+              && CanCompute( cat, "SomeProjectiveObject" ) && CanCompute( cat, "EpimorphismFromSomeProjectiveObject" ) ))
+      
+      Error( "The category must be abelian with 'computable' enough projectives!\n" );
+      
+    end;
+    
+    ch_cat = ComplexesCategoryByCochains( cat );
+    
+    if (bool == false)
+      
+      iota = KernelEmbedding( cat, EpimorphismFromSomeProjectiveObject( cat, o ) );
+      
+      delta_m1 = PreCompose( cat, EpimorphismFromSomeProjectiveObject( cat, Source( iota ) ), iota );
+      
+      upper_func = delta -> UniversalMorphismIntoZeroObject( cat, Range( delta ) );
+      
+      lower_func =
+        function ( delta )
+          local iota;
+          
+          iota = KernelEmbedding( cat, delta );
+          
+          return PreCompose( cat, EpimorphismFromSomeProjectiveObject( cat, Source( iota ) ), iota );
+          
+      end;
+      
+      diffs = ZFunctionWithInductiveSides( -1, delta_m1, lower_func, upper_func, IsEqualForMorphismsOnMor );
+      
+      return CreateComplex( ch_cat, diffs, -infinity, 0 );
+      
+    else
+      
+      P = ProjectiveResolution( o, false );
+      
+      i = -1;
+
+      while @not IsZeroForObjects( cat, P[i] )
+          i = i - 1;
+      end;
+      
+      return CreateComplex( ch_cat, Objects( P ), Differentials( P ), i + 1, UpperBound( P ) );
+      
+    end;
+    
+end );
+
+##
+@InstallMethod( InjectiveResolution,
+       [ IsCapCategoryObject, IsBool ],
+  
+  function( o, bool )
+    local cat_op, o_op, o_projs_res;
+    
+    cat_op = Opposite( CapCategory( o ); only_primitive_operations_and_hom_structure = true );
+
+    o_op = CallFuncListAtRuntime( Opposite, [ o ] );
+
+    o_projs_res = CallFuncListAtRuntime( ProjectiveResolution, [ o_op, bool ] );
+
+    return AsComplexOverOppositeCategory( o_projs_res );
+    
+end );
+
+##
+@InstallMethod( MorphismBetweenProjectiveResolutions,
+       [ IsCapCategoryMorphism, IsBool ],
+  
+  function ( phi, bool )
+    local cat, ch_cat, S, R, epi_S, epi_R, PS, PR, morphisms;
+    
+    cat = CapCategory( phi );
+    
+    ch_cat = ComplexesCategoryByCochains( cat );
+    
+    S = Source( phi );
+    R = Range( phi );
+    
+    epi_S = EpimorphismFromSomeProjectiveObject( cat, S );
+    epi_R = EpimorphismFromSomeProjectiveObject( cat, R );
+    
+    PS = CallFuncListAtRuntime( ProjectiveResolution, [ S, bool ] );
+    PR = CallFuncListAtRuntime( ProjectiveResolution, [ R, bool ] );
+    
+    morphisms =
+      AsZFunction(
+        function ( i )
+          local eta, epi;
+          
+          if (i > 0)
+            
+            return ZeroMorphism( cat, PS[i], PR[i] );
+            
+          elseif (i == 0)
+            
+            return ProjectiveLift( cat, PreCompose( cat, epi_S, phi ), epi_R );
+            
+          elseif (i == -1)
+            
+            eta = KernelLift( cat, epi_R, PreCompose( cat, PS^i, morphisms[i+1] ) );
+            
+            epi = KernelLift( cat, epi_R, PR^i );
+            
+            @Assert( 3, IsEpimorphism( cat, epi ) );
+            
+            return ProjectiveLift( cat, eta, epi );
+            
+          else
+            
+            eta = KernelLift( cat, PR^( i+1 ), PreCompose( cat, PS^i, morphisms[i+1] ) );
+            
+            epi = KernelLift( cat, PR^( i+1 ), PR^i );
+            
+            @Assert( 3, IsEpimorphism( cat, epi ) );
+            
+            return ProjectiveLift( cat, eta, epi );
+            
+          end;
+        
+        end );
+    
+    return CallFuncListAtRuntime( CreateComplexMorphism, [ ch_cat, PS, morphisms, PR ] );
+    
+end );
+
+##
+@InstallMethod( MorphismBetweenInjectiveResolutions,
+       [ IsCapCategoryMorphism, IsBool ],
+  
+  function( phi, bool )
+    local cat_op, phi_op, phi_proj_res;
+    
+    cat_op = Opposite( CapCategory( phi ); only_primitive_operations_and_hom_structure = true );
+
+    phi_op = CallFuncListAtRuntime( Opposite, [ phi ] );
+    
+    phi_proj_res = CallFuncListAtRuntime( MorphismBetweenProjectiveResolutions, [ phi_op, bool ] );
+    
+    return AsComplexMorphismOverOppositeCategory( phi_proj_res );
+    
+end );
+

@@ -1,0 +1,485 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# ComplexesCategories: Category of (co)chain complexes of an additive category
+#
+# Implementations
+#
+
+
+#########################################
+#
+# (Co)chain morphisms constructors
+#
+#########################################
+
+## Morphisms
+##
+@InstallMethod( CreateComplexMorphism,
+            [ IsComplexesCategory, IsChainOrCochainComplex, IsZFunction, IsChainOrCochainComplex ],
+  
+  ( ch_cat, S, morphisms, R ) -> CallFuncListAtRuntime( MorphismConstructor, [ ch_cat, S, morphisms, R ] ) );
+
+##
+@InstallMethod( CreateComplexMorphism,
+            [ IsComplexesCategory, IsChainOrCochainComplex, IsFunction, IsChainOrCochainComplex ],
+  
+  ( ch_cat, S, morphisms, R ) -> CreateComplexMorphism( ch_cat, S, AsZFunction( morphisms ), R )
+);
+
+##
+@InstallMethod( CreateComplexMorphism,
+        [ IsComplexesCategory, IsChainOrCochainComplex, IsDenseList, IsInt, IsChainOrCochainComplex ],
+  
+  function ( ch_cat, S, dense_list_of_morphisms, lower_bound, R )
+    local upper_bound, morphisms;
+    
+    upper_bound = lower_bound + Length( dense_list_of_morphisms ) - 1;
+    
+    morphisms =
+      function( i )
+        
+        if (i >= lower_bound && i <= upper_bound)
+          return dense_list_of_morphisms[i - lower_bound + 1];
+        else
+          return ZeroMorphism( UnderlyingCategory( ch_cat ), S[i], R[i] );
+        end;
+        
+      end;
+    
+    return CreateComplexMorphism( ch_cat, S, morphisms, R );
+    
+end );
+
+##
+@InstallMethod( CreateComplexMorphism,
+        [ IsChainOrCochainComplex, IsDenseList, IsInt, IsChainOrCochainComplex ],
+  
+  ( S, dense_list_of_morphisms, lower_bound, R ) -> CreateComplexMorphism( CapCategory( S ), S, dense_list_of_morphisms, lower_bound, R )
+);
+
+##
+@InstallMethod( CreateComplexMorphism,
+        [ IsComplexesCategory, IsCapCategoryMorphism, IsInt ],
+  
+  ( ch_cat, f, n ) -> CreateComplexMorphism( ch_cat, CreateComplex( ch_cat, Source( f ), n ), [ f ], n, CreateComplex( ch_cat, Range( f ), n ) )
+);
+
+###################################
+#
+# Components of co-chain morphisms
+#
+###################################
+
+##
+@InstallMethod( LowerBound,
+          [ IsChainOrCochainMorphism ],
+  
+  phi -> Minimum( LowerBound( Source( phi ) ), LowerBound( Range( phi ) ) )
+);
+
+##
+@InstallMethod( UpperBound,
+          [ IsChainOrCochainMorphism ],
+  
+  phi -> Maximum( UpperBound( Source( phi ) ), UpperBound( Range( phi ) ) )
+);
+
+##
+@InstallMethod( MorphismAtOp,
+          [ IsChainOrCochainMorphism, IsInt ],
+  
+  ( phi, i ) -> Morphisms( phi )[ i ]
+);
+
+##
+@InstallMethod( getindex,
+          [ IsChainOrCochainMorphism, IsInt ],
+  
+  MorphismAt
+);
+
+##
+@InstallMethod( MorphismsSupport,
+          [ IsChainOrCochainMorphism, IsInt, IsInt ],
+  
+  ( phi, m, n ) -> Filtered( (m):(n), i -> @not IsZeroForMorphisms( MorphismAt( phi, i ) ) )
+);
+
+##
+@InstallMethod( MorphismsSupport,
+          [ IsChainOrCochainMorphism ],
+  
+  phi -> MorphismsSupport( phi, LowerBound( phi ), UpperBound( phi ) )
+);
+
+##
+@InstallMethod( CocyclesFunctorialAtOp,
+          [ IsCochainMorphism, IsInt ],
+  
+  ( phi, i ) -> CocyclesFunctorialAt( CocyclesAt( Source( phi ), i ), phi, i, CocyclesAt( Range( phi ), i ) )
+);
+
+##
+@InstallMethod( CocyclesFunctorialAt,
+          [ IsCapCategoryObject, IsCochainMorphism, IsInt, IsCapCategoryObject ],
+  
+  ( source_cocycles, phi, i, range_cocycles ) -> KernelObjectFunctorialWithGivenKernelObjects( source_cocycles, Source( phi )^i, phi[i], Range( phi )^i, range_cocycles )
+);
+
+##
+@InstallMethod( CyclesFunctorialAtOp,
+          [ IsChainMorphism, IsInt ],
+  
+  ( phi, i ) -> CocyclesFunctorialAt( AsCochainComplexMorphism( phi ), -i )
+);
+
+##
+@InstallMethod( CohomologyFunctorialAtOp,
+          [ IsCochainMorphism, IsInt ],
+  
+  function( phi, i )
+    local B, C, iota_B, iota_C, kappa;
+    
+    B = Source( phi );
+    C = Range( phi );
+    
+    iota_B = KernelLiftWithGivenKernelObject( B^i, CoboundariesEmbeddingAt( B, i ), CocyclesAt( B, i ) );
+    iota_C = KernelLiftWithGivenKernelObject( C^i, CoboundariesEmbeddingAt( C, i ), CocyclesAt( C, i ) );
+    
+    kappa = CocyclesFunctorialAt( phi, i );
+    
+    return CokernelObjectFunctorialWithGivenCokernelObjects( CohomologyAt( B, i ), iota_B, kappa, iota_C, CohomologyAt( C, i ) );
+    
+end );
+
+##
+@InstallMethod( HomologyFunctorialAtOp,
+          [ IsChainMorphism, IsInt ],
+  
+  ( phi, i ) -> CohomologyFunctorialAt( AsCochainComplexMorphism( phi ), -i )
+);
+
+##
+@InstallMethod( IsQuasiIsomorphism,
+          [ IsCochainMorphism ],
+  
+  phi -> ForAll( (LowerBound( phi )):(UpperBound( phi )), i -> IsIsomorphism( CohomologyFunctorialAt( phi, i ) ) )
+);
+
+##
+@InstallMethod( IsQuasiIsomorphism,
+          [ IsChainMorphism ],
+  
+  phi -> ForAll( (LowerBound( phi )):(UpperBound( phi )), i -> IsIsomorphism( HomologyFunctorialAt( phi, i ) ) )
+);
+
+
+##
+@InstallMethod( IsHomotopicToZeroMorphism,
+          [ IsComplexesCategoryByCochains, IsCochainMorphism ],
+          
+  function( ch_cat, phi )
+    local range_cat, ell;
+    
+    range_cat = RangeCategoryOfHomomorphismStructure( UnderlyingCategory( ch_cat ) );
+    
+    ell = _complexes_InterpretMorphismAsMorphismFromDistinguishedObjectToHomomorphismStructure( ch_cat, phi );
+    
+    return IsLiftable( range_cat, ell[0], Range( ell )^(-1) );
+    
+end );
+
+##
+@InstallMethod( IsHomotopicToZeroMorphism,
+          [ IsCochainMorphism ],
+  
+  phi -> IsHomotopicToZeroMorphism( CapCategory( phi ), phi )
+);
+
+##
+@InstallMethod( WitnessForBeingHomotopicToZeroMorphism,
+          [ IsComplexesCategoryByCochains, IsCochainMorphism ],
+          
+  function( ch_cat, phi )
+    local B, C, l_BC, u_BC, cat, range_cat, ell, hom_BC, diagram, m;
+    
+    B = Source( phi );
+    C = Range( phi );
+    
+    l_BC = Maximum( LowerBound( C ), LowerBound( B ) - 1 );
+    u_BC = Minimum( UpperBound( C ), UpperBound( B ) - 1 );
+    
+    cat = UnderlyingCategory( ch_cat );
+    
+    range_cat = RangeCategoryOfHomomorphismStructure( UnderlyingCategory( ch_cat ) );
+    
+    ell = _complexes_InterpretMorphismAsMorphismFromDistinguishedObjectToHomomorphismStructure( ch_cat, phi );
+    
+    hom_BC = Range( ell );
+    
+    if (HasBaseZFunctions( Objects( hom_BC ) ))
+        diagram = BaseZFunctions( Objects( hom_BC ) )[1][-1];
+    else
+        diagram = List( (l_BC):(u_BC), j -> HomomorphismStructureOnObjects( cat, B[j+1], C[j] ) );
+    end;
+    
+    ell = Lift( range_cat, ell[0], Range( ell )^(-1) );
+    
+    m = List( (1):(Length( diagram )), i -> PreCompose( range_cat, ell, ProjectionInFactorOfDirectSumWithGivenDirectSum( range_cat, diagram, i, hom_BC[-1] ) ) );
+    
+    m = ListN( (1):(Length( m )), (l_BC):(u_BC), ( index_j, j ) -> InterpretMorphismFromDistinguishedObjectToHomomorphismStructureAsMorphism( cat, B[j+1], C[j], m[index_j] ) );
+    
+    return AsZFunction(
+              function( i )
+                
+                if (i - 1 < l_BC || u_BC < i - 1)
+                  return ZeroMorphism( cat, B[i], C[i-1] );
+                elseif (l_BC <= i - 1 && i - 1 <= u_BC)
+                  return m[ i - l_BC ];
+                end;
+                
+            end );
+            
+end );
+
+##
+@InstallMethod( WitnessForBeingHomotopicToZeroMorphism,
+          [ IsCochainMorphism ],
+  
+  phi -> WitnessForBeingHomotopicToZeroMorphism( CapCategory( phi ), phi )
+);
+
+##
+@InstallMethod( AsComplexMorphismOverOppositeCategory,
+          [ IsCochainMorphism ],
+  
+  function( phi )
+    local S, T, morphisms, psi;
+    
+    S = AsComplexOverOppositeCategory( Range( phi ) );
+    
+    T = AsComplexOverOppositeCategory( Source( phi ) );
+    
+    morphisms = i -> Opposite( Morphisms( phi )[-i] );
+    
+    psi = CreateComplexMorphism( CapCategory( S ), S, morphisms, T );
+    
+    SetAsComplexMorphismOverOppositeCategory( psi, phi );
+    
+    return psi;
+    
+end );
+
+##
+@InstallMethod( AsCochainComplexMorphism,
+          [ IsChainMorphism ],
+  
+  alpha -> ModelingTowerMorphismConstructor( CapCategory( alpha ), AsCochainComplex( Source( alpha ) ), MorphismDatum( alpha ), AsCochainComplex( Range( alpha ) ) )
+);
+
+##
+@InstallMethod( AsChainComplexMorphism,
+          [ IsCochainMorphism ],
+  
+  function( alpha )
+    local ch_cat;
+    
+    ch_cat = ComplexesCategoryByChains( UnderlyingCategory( CapCategory( alpha ) ) );
+    
+    return MorphismConstructor( ch_cat, AsChainComplex( Source( alpha ) ), ModelingTowerMorphismDatum( ch_cat, alpha ), AsChainComplex( Range( alpha ) ) );
+    
+end );
+
+
+#################################
+#
+# Display and View
+#
+#################################
+
+
+##
+@InstallMethod( ViewString, [ IsChainOrCochainMorphism ], _complexes_ViewString );
+
+##
+@InstallMethod( DisplayString,
+          [ IsChainOrCochainMorphism, IsInt, IsInt ],
+  function( map, m, n )
+    local str, s, i;
+    
+    str = "\n";
+    for i in Reversed( (m):(n) )
+      
+      s = @Concatenation( "== ", StringGAP( i ), " =======================" );
+      str = @Concatenation( str, s, "\n" );
+      str = @Concatenation( str, DisplayString( map[ i ] ), "\n" );
+      
+    end;
+    
+    return str;
+    
+end );
+
+##
+@InstallMethod( DisplayString,
+          [ IsChainOrCochainMorphism ],
+    
+  function ( phi )
+    local l, u;
+    
+    l = LowerBound( phi );
+    u = UpperBound( phi );
+    
+    if (ForAll( [ l, u ], IsInt ))
+      
+      return @Concatenation( DisplayString( phi, l, u ), "\nA morphism in ", Name( CapCategory( phi ) ), " defined by the above data\n" );
+      
+    else
+      
+      TryNextMethod( );
+      
+    end;
+      
+end );
+
+##
+@InstallMethod( LaTeXOutput,
+        [ IsChainOrCochainMorphism, IsInt, IsInt ],
+  @FunctionWithNamedArguments(
+    [ [ "OnlyDatum", false ] ],
+    function ( CAP_NAMED_ARGUMENTS, phi, l, u )
+      local s, i;
+      
+      if (OnlyDatum)
+        
+        s = @Concatenation( "\\begin", LATEX_LBRACE, "array", LATEX_RBRACE, LATEX_LBRACE, "lc", LATEX_RBRACE, "\n " );
+        
+        for i in (l):(u)
+          
+          s = @Concatenation( s, "\\\\ \n", StringGAP( i ), ": &", LaTeXOutput( phi[ i ]; OnlyDatum = false ), " \\\\ \n " );
+          
+        end;
+        
+      else
+        
+        s = @Concatenation( "\\begin", LATEX_LBRACE, "array", LATEX_RBRACE, LATEX_LBRACE, "ccc", LATEX_RBRACE, "\n " );
+        
+        if (IsCochainMorphism( phi ))
+          
+          s = @Concatenation(
+                  s,
+                  LaTeXOutput( Source( phi )[ u ] ),
+                  "&-\\phantom", LATEX_LBRACE, "-", LATEX_RBRACE, LATEX_LBRACE,
+                  LaTeXOutput( phi[ u ]; OnlyDatum = true ),
+                  LATEX_RBRACE, "\\phantom", LATEX_LBRACE, "-", LATEX_RBRACE, "\\rightarrow&",
+                  LaTeXOutput( Range( phi )[ u ] ),
+                  "\n \\\\ \n"
+                );
+                
+          for i in Reversed( (l):(u - 1) )
+            
+            s = @Concatenation(
+                    s,
+                    " \\uparrow_", LATEX_LBRACE, "\\phantom", LATEX_LBRACE, StringGAP( i ), LATEX_RBRACE, LATEX_RBRACE,
+                    "&&",
+                    " \n \\uparrow_", LATEX_LBRACE, "\\phantom", LATEX_LBRACE, StringGAP( i ), LATEX_RBRACE, LATEX_RBRACE,
+                    "\n \\\\ \n "
+                  );
+                  
+            s = @Concatenation(
+                    s,
+                    LaTeXOutput( Source( phi ) ^ i; OnlyDatum = true ),
+                    "&&",
+                    LaTeXOutput( Range( phi ) ^ i; OnlyDatum = true ),
+                    "\n \\\\ \n "
+                  );
+                  
+            s = @Concatenation(
+                    s,
+                    "\\vert_", LATEX_LBRACE, StringGAP( i ), LATEX_RBRACE, " ",
+                    "&&",
+                    "\\vert_", LATEX_LBRACE, StringGAP( i ), LATEX_RBRACE, " ",
+                    "\n \\\\ \n "
+                  );
+                  
+            s = @Concatenation(
+                  s,
+                  LaTeXOutput( Source( phi )[ i ] ),
+                  "&-\\phantom", LATEX_LBRACE, "-", LATEX_RBRACE, LATEX_LBRACE,
+                  LaTeXOutput( phi[ i ]; OnlyDatum = true ),
+                  LATEX_RBRACE, "\\phantom", LATEX_LBRACE, "-", LATEX_RBRACE, "\\rightarrow&",
+                  LaTeXOutput( Range( phi )[ i ] ),
+                  "\n \\\\ \n "
+                );
+                
+          end;
+          
+        else
+          
+          for i in Reversed( (l + 1):(u) )
+            
+            s = @Concatenation(
+                  s,
+                  "\\\\ \n",
+                  LaTeXOutput( Source( phi )[ i ] ),
+                  "&-\\phantom", LATEX_LBRACE, "-", LATEX_RBRACE, LATEX_LBRACE,
+                  LaTeXOutput( phi[ i ]; OnlyDatum = true ),
+                  LATEX_RBRACE, "\\phantom", LATEX_LBRACE, "-", LATEX_RBRACE, "\\rightarrow&",
+                  LaTeXOutput( Range( phi )[ i ] ),
+                  "\n "
+                );
+                
+            s = @Concatenation(
+                    s,
+                    "\\\\ \n \\vert^", LATEX_LBRACE, StringGAP( i ), LATEX_RBRACE, " ",
+                    "&&",
+                    "\\vert^", LATEX_LBRACE, StringGAP( i ), LATEX_RBRACE, " ",
+                    "\n \\\\ \n "
+                  );
+                  
+            s = @Concatenation(
+                    s,
+                    LaTeXOutput( Source( phi ) ^ i; OnlyDatum = true ),
+                    "&&",
+                    LaTeXOutput( Range( phi ) ^ i; OnlyDatum = true ),
+                    "\n \\\\ \n "
+                  );
+                  
+            s = @Concatenation(
+                    s,
+                    " \\downarrow_", LATEX_LBRACE, "\\phantom", LATEX_LBRACE, StringGAP( i ), LATEX_RBRACE, LATEX_RBRACE,
+                    "&&",
+                    " \n \\downarrow_", LATEX_LBRACE, "\\phantom", LATEX_LBRACE, StringGAP( i ), LATEX_RBRACE, LATEX_RBRACE
+                  );
+                  
+          end;
+          
+          s = @Concatenation(
+                  s,
+                  "\\\\ \n",
+                  LaTeXOutput( Source( phi )[ l ] ),
+                  "&-\\phantom", LATEX_LBRACE, "-", LATEX_RBRACE, LATEX_LBRACE,
+                  LaTeXOutput( phi[ l ]; OnlyDatum = true ),
+                  LATEX_RBRACE, "\\phantom", LATEX_LBRACE, "-", LATEX_RBRACE, "\\rightarrow&",
+                  LaTeXOutput( Range( phi )[ l ] ),
+                  "\n \\\\ \n "
+                );
+                
+        end;
+        
+      end;
+      
+      return @Concatenation( s, "\\end", LATEX_LBRACE, "array", LATEX_RBRACE );
+      
+    end
+  )
+);
+
+##
+@InstallMethod( LaTeXOutput,
+          [ IsChainOrCochainMorphism ],
+  phi -> LaTeXOutput(
+              phi,
+              Minimum( LowerBound( Source( phi ) ), LowerBound( Range( phi ) ) ),
+              Maximum( UpperBound( Source( phi ) ), UpperBound( Range( phi ) ) )
+          ) );
+

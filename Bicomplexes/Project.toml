@@ -1,0 +1,39 @@
+name = "Bicomplexes"
+uuid = "69e29c28-5933-4bec-8375-50ae0a6523f2"
+authors = [
+	"Mohamed Barakat <mohamed.barakat@uni-siegen.de>",
+	"Kamal Saleh <kamal.saleh@uni-siegen.de>"
+]
+
+# Transpiled from GAP's Bicomplexes v2026.07-01
+version = "0.1.0"
+
+[deps]
+MatricesForHomalg = "29b9b1b6-efa6-450e-8188-a5a2c25df071"
+CAP = "d64df2ee-d2bb-46f4-8cbc-f03bb858f8cb"
+ComplexesCategories = "25740295-7925-405d-8250-6795ea33aeec"
+
+[weakdeps]
+FpCategories = "b9f20f1b-1226-4811-b6a0-b2e47a225553"
+FpLinearCategories = "607c1b85-d155-426e-91c9-9defd76aa9e1"
+AdditiveClosuresForCAP = "bbee75d5-3cb4-4478-8ae7-eddc7864e69e"
+FreydCategoriesForCAP = "cec356e3-7627-4f73-8308-af32cbf46c2b"
+
+[extensions]
+
+[compat]
+CAP = "~0.8.11"
+ComplexesCategories = "~0.1.0"
+MatricesForHomalg = "~0.1.10"
+FpCategories = "~0.1.14"
+FpLinearCategories = "~0.2.4"
+AdditiveClosuresForCAP = "~0.2.5"
+FreydCategoriesForCAP = "~0.2.5"
+julia = "1.11"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+
+[targets]
+test = ["Test", "Documenter", "FpCategories", "FpLinearCategories", "AdditiveClosuresForCAP", "FreydCategoriesForCAP"]

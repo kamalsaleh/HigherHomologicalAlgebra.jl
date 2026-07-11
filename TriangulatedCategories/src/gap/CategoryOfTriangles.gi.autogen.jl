@@ -1,0 +1,1061 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# TriangulatedCategories: Framework for triangulated categories
+#
+# Implementations
+#
+
+##
+@InstallMethod( CategoryOfExactTriangles,
+          [ IsCapCategory ],
+
+  function( category )
+    local name, triangles;
+    
+    if (!( HasIsTriangulatedCategory( category ) && IsTriangulatedCategory( category ) ))
+      Error( "The argument must be a triangulated category" );
+    end;
+    
+    name = @Concatenation( "Category of exact triangles( ", Name( category ), " )" );
+    
+    triangles = CreateCapCategory( name, IsCategoryOfExactTriangles, IsCategoryOfExactTrianglesObject, IsCategoryOfExactTrianglesMorphism, IsCapCategoryTwoCell );
+    
+    triangles.category_as_first_argument = true;
+    
+    SetUnderlyingCategory( triangles, category );
+    
+    AddObjectConstructor( triangles,
+      function( cat, datum )
+        
+        return CreateCapCategoryObjectWithAttributes(
+                 cat,
+                 DefiningTripleOfMorphisms, datum
+               );
+        
+    end );
+    
+    AddObjectDatum( triangles,
+      function( cat, triangle )
+        
+        return DefiningTripleOfMorphisms( triangle );
+        
+    end );
+    
+    AddMorphismConstructor( triangles,
+      function( cat, s, datum, r )
+        
+        return CreateCapCategoryMorphismWithAttributes(
+                 cat, s, r,
+                 DefiningTripleOfMorphisms, datum
+               );
+        
+    end );
+    
+    AddMorphismDatum( triangles,
+      function( cat, mu )
+        
+        return DefiningTripleOfMorphisms( mu );
+        
+    end );
+    
+    AddIsEqualForObjects( triangles,
+      function( cat, triangle_1, triangle_2 )
+        return IsEqualForObjects( triangle_1[ 0 ], triangle_2[ 0 ] ) && 
+                IsEqualForObjects( triangle_1[ 1 ], triangle_2[ 1 ] ) &&
+                 IsEqualForObjects(  triangle_1[ 2 ], triangle_2[ 2 ] ) &&
+                  IsEqualForMorphisms( triangle_1 ^ 0, triangle_2 ^ 0 ) && 
+                   IsEqualForMorphisms( triangle_1 ^ 1, triangle_2 ^ 1 ) &&
+                    IsEqualForMorphisms( triangle_1 ^ 2, triangle_2 ^ 2 );
+      end );
+      
+    AddIsEqualForMorphisms( triangles,
+      function( cat, mu, nu )
+        local datum_mu, datum_nu;
+        
+        datum_mu = MorphismDatum( cat, mu );
+        datum_nu = MorphismDatum( cat, nu );
+        
+        return IsEqualForMorphisms( datum_mu[1], datum_nu[1] ) &&
+                  IsEqualForMorphisms( datum_mu[2], datum_nu[2] ) &&
+                    IsEqualForMorphisms( datum_mu[3], datum_nu[3] );
+      end );
+      
+    AddIsCongruentForMorphisms( triangles,
+      function( cat, mu, nu )
+        local datum_mu, datum_nu;
+        
+        datum_mu = MorphismDatum( cat, mu );
+        datum_nu = MorphismDatum( cat, nu );
+        
+        return IsCongruentForMorphisms( datum_mu[1], datum_nu[1] ) &&
+                  IsCongruentForMorphisms( datum_mu[2], datum_nu[2] ) &&
+                    IsCongruentForMorphisms( datum_mu[3], datum_nu[3] );
+      end );
+      
+    AddIsZeroForObjects( triangles,
+      function( cat, triangle )
+        return ForAll( (0):(3), i -> IsZeroForObjects( triangle[ i ] ) );
+      end );
+      
+    AddIsZeroForMorphisms( triangles,
+      function( cat, mu )
+        return ForAll( (0):(3), i -> IsZeroForMorphisms( mu[ i ] ) );
+      end );
+      
+    AddIdentityMorphism( triangles,
+      function( cat, triangle )
+        
+        return MorphismConstructor(
+                 cat,
+                 triangle,
+                 List( (0):(2), i -> IdentityMorphism( triangle[ i ] ) ),
+                 triangle
+               );
+        
+      end );
+      
+    AddPreCompose( triangles,
+      function( cat, mu, nu )
+        
+        return MorphismConstructor(
+                 cat,
+                 Source( mu ),
+                 ListN( MorphismDatum( cat, mu ), MorphismDatum( cat, nu ), PreCompose ),
+                 Range( nu )
+               );
+        
+    end );
+    
+    AddIsIsomorphism( triangles,
+      function( cat, mu )
+        if (ForAll( (0):(3), i -> IsIsomorphism( mu[ i ] ) ))
+          
+          return true;
+          
+        else
+          
+          return false;
+          
+        end;
+        
+    end );
+    
+    AddIsWellDefinedForObjects( triangles,
+      function( cat, triangle )
+        
+        if (IsStandardExactTriangle( triangle ))
+          
+          return true;
+          
+        end;
+        
+        if (!( IsWellDefined( triangle[ 0 ] ) &&
+                  IsWellDefined( triangle[ 1 ] ) &&
+                    IsWellDefined( triangle[ 2 ] ) &&
+                      IsWellDefined( triangle[ 3 ] )
+                        ))
+                        
+          return false;
+          
+        end;
+        
+        if (!( IsWellDefined( triangle ^ 0 ) &&
+                  IsWellDefined( triangle ^ 1 ) &&
+                    IsWellDefined( triangle ^ 2 )
+                      ))
+                      
+          return false;
+          
+        end;
+        
+        if (!( IsEqualForObjects( Range( triangle ^ 0 ), Source( triangle ^ 1 ) ) &&
+                  IsEqualForObjects( Range( triangle ^ 1 ), Source( triangle ^ 2 ) ) &&
+                    IsEqualForObjects( ShiftOfObject( Source( triangle ^ 0 ) ), Range( triangle ^ 2 ) )
+                      ))
+                      
+          return false;
+          
+        end;
+        
+        if (!( IsZeroForMorphisms( PreCompose( triangle ^ 0, triangle ^ 1 ) ) &&
+                  IsZeroForMorphisms( PreCompose( triangle ^ 1, triangle ^ 2 ) )
+                    ))
+                    
+          return false;
+          
+        end;
+        
+        if (WitnessIsomorphismIntoStandardExactTriangle( triangle ) == fail)
+          
+          return false;
+          
+        end;
+        
+        return true;
+        
+    end );
+    
+    AddIsWellDefinedForMorphisms( triangles, 
+      function( cat, mu )
+        local triangle_1, triangle_2;
+        
+        if (!(IsWellDefined( Source( mu ) )) || @not IsWellDefined( Range( mu) ))
+          
+          return false;
+          
+        end;
+        
+        if (@not ForAll( (0):(3), i -> IsWellDefined( mu[ i ] ) ))
+          
+          return false;
+          
+        end;
+        
+        triangle_1 = Source( mu );
+        
+        triangle_2 = Range( mu );
+        
+        if (!( IsEqualForObjects( Source( mu[ 0 ] ), triangle_1[ 0 ] ) && 
+                  IsEqualForObjects( Range( mu[ 0 ] ), triangle_2[ 0 ] )
+              ))
+              
+          return false;
+          
+        end;
+        
+        if (!( IsEqualForObjects( Source( mu[ 1 ] ), triangle_1[ 1 ] ) &&
+                  IsEqualForObjects( Range( mu[ 1 ] ), triangle_2[ 1 ] )
+              ))
+              
+          return false;
+          
+        end;
+        
+        if (!( IsEqualForObjects( Source( mu[ 2 ] ), triangle_1[ 2 ] ) &&
+                  IsEqualForObjects( Range( mu[ 2 ] ), triangle_2[ 2 ] )
+                ))
+                
+          return false;
+        
+        end;
+        
+        # Is the diagram commutative?
+        
+        if (@not IsCongruentForMorphisms(
+                  PreCompose( triangle_1 ^ 0, mu[ 1 ] ),
+                    PreCompose( mu[ 0 ], triangle_2 ^ 0 )
+                ))
+                
+          return false;
+            
+        end;
+        
+        if (@not IsCongruentForMorphisms(
+                  PreCompose( triangle_1 ^ 1, mu[ 2 ] ),
+                    PreCompose( mu[ 1 ], triangle_2 ^ 1 )
+                ))
+                
+          return false;
+          
+        end;
+        
+        if (@not IsCongruentForMorphisms(
+                  PreCompose( triangle_1 ^ 2, mu[ 3 ] ),
+                    PreCompose( mu[ 2 ], triangle_2 ^ 2 )
+                ))
+                
+            return false;
+            
+        end;
+        
+        return true;
+        
+    end );
+    
+    Finalize( triangles );
+    
+    return triangles;
+    
+end );
+
+####################################
+##
+## Constructors
+##
+####################################
+
+##
+@InstallMethod( ExactTriangle,
+          [ IsCapCategory, IsCapCategoryMorphism, IsCapCategoryMorphism, IsCapCategoryMorphism ],
+
+  function( cat, alpha, iota, pi )
+    
+    return CallFuncListAtRuntime( ObjectConstructor, [ cat, [ alpha, iota, pi ] ] );
+    
+end );
+
+##
+@InstallMethod( ExactTriangle,
+          [ IsCapCategoryMorphism, IsCapCategoryMorphism, IsCapCategoryMorphism ],
+
+  function( alpha, iota, pi )
+    local cat;
+
+    cat = CategoryOfExactTriangles( CapCategory( alpha ) );
+
+    return CallFuncListAtRuntime( ObjectConstructor, [ cat, [ alpha, iota, pi ] ] );
+    
+end );
+
+##
+@InstallMethod( DomainMorphism,
+          [ IsCategoryOfExactTrianglesObject ],
+  t -> DefiningTripleOfMorphisms( t )[ 1 ]
+);
+
+##
+@InstallMethod( MorphismIntoConeObject,
+          [ IsCategoryOfExactTrianglesObject ],
+  t -> DefiningTripleOfMorphisms( t )[ 2 ]
+);
+
+##
+@InstallMethod( MorphismFromConeObject,
+          [ IsCategoryOfExactTrianglesObject ],
+  t -> DefiningTripleOfMorphisms( t )[ 3 ]
+);
+
+##
+@InstallMethod( StandardExactTriangle,
+          [ IsCapCategoryMorphism ],
+  function( alpha )
+    local cat, triangle, iota_alpha, pi_alpha;
+    
+    cat = CategoryOfExactTriangles( CapCategory( alpha ) );
+    
+    iota_alpha = MorphismIntoStandardConeObject( alpha );
+    
+    pi_alpha = MorphismFromStandardConeObject( alpha );
+    
+    triangle = CallFuncListAtRuntime( ExactTriangle, [ cat, alpha, iota_alpha, pi_alpha ] );
+    
+    SetIsStandardExactTriangle( triangle, true );
+    
+    SetWitnessIsomorphismIntoStandardExactTriangle( triangle, IdentityMorphism( triangle ) );
+    
+    SetWitnessIsomorphismFromStandardExactTriangle( triangle, IdentityMorphism( triangle ) );
+    
+    return triangle;
+    
+end );
+
+##
+@InstallMethod( ExactTriangle,
+        [ IsCapCategoryMorphism ],
+  alpha -> StandardExactTriangle( alpha )
+);
+
+##
+@InstallMethod( ExactTriangleByOctahedralAxiom,
+          [ IsCapCategoryMorphism, IsCapCategoryMorphism, IsCapCategoryMorphism ],
+  @FunctionWithNamedArguments(
+  [
+    [ "compute_witnesses", false ],
+  ],
+  function( CAP_NAMED_ARGUMENTS, alpha, beta, gamma )
+    local cat, triangle, st_triangle, T, i;
+    
+    cat = CategoryOfExactTriangles( CapCategory( alpha ) );
+    
+    triangle = CallFuncListAtRuntime( ExactTriangle, [ cat,
+      DomainMorphismByOctahedralAxiom( alpha, beta, gamma ),
+      MorphismIntoConeObjectByOctahedralAxiom( alpha, beta, gamma ),
+      MorphismFromConeObjectByOctahedralAxiom( alpha, beta, gamma )
+    ] );
+    
+    if (@not compute_witnesses)
+      return triangle;
+    end;
+    
+    st_triangle = StandardExactTriangle( triangle );
+    
+    T = CapCategory( alpha );
+    
+    if (!( CanCompute( T, "WitnessIsomorphismIntoStandardConeObjectByOctahedralAxiomWithGivenObjects" ) &&
+              CanCompute( T, "WitnessIsomorphismFromStandardConeObjectByOctahedralAxiomWithGivenObjects" )
+          ))
+      Error( "The octahedral methods must be installed in the category of the arguments" );
+    else
+      i = WitnessIsomorphismIntoStandardConeObjectByOctahedralAxiomWithGivenObjects( triangle[ 2 ], alpha, beta, gamma, st_triangle[ 2 ] );
+      SetWitnessIsomorphismIntoStandardExactTriangle( triangle,
+        MorphismOfExactTriangles(
+          triangle,
+          IdentityMorphism( triangle[ 0 ] ),
+          IdentityMorphism( triangle[ 1 ] ),
+          i,
+          st_triangle
+        ) );
+      i = WitnessIsomorphismFromStandardConeObjectByOctahedralAxiomWithGivenObjects( st_triangle[ 2 ], alpha, beta, gamma, triangle[ 2 ] );
+      SetWitnessIsomorphismFromStandardExactTriangle( triangle,
+        MorphismOfExactTriangles(
+          st_triangle,
+          IdentityMorphism( triangle[ 0 ] ),
+          IdentityMorphism( triangle[ 1 ] ),
+          i,
+          triangle
+        ) );
+    end;
+    
+    return triangle;
+    
+  end ) );
+
+##
+@InstallMethod( MorphismOfExactTriangles,
+        [ IsCategoryOfExactTrianglesObject, IsCapCategoryMorphism, IsCapCategoryMorphism, IsCapCategoryMorphism, IsCategoryOfExactTrianglesObject ],
+  function( s, mu_0, mu_1, mu_2, r )
+    
+    return CallFuncListAtRuntime( MorphismConstructor, [ CapCategory( s ), s, [ mu_0, mu_1, mu_2 ], r ] );
+    
+end );
+
+##
+@InstallMethod( MorphismAtOp, 
+          [ IsCategoryOfExactTrianglesObject, IsInt ],
+  function( triangle, i )
+    
+    if (i < 0 || i > 2)
+      Error( "Wrong index!\n" );
+    end;
+    
+    return CallFuncListAtRuntime( ObjectDatum, [ CapCategory( triangle ), triangle ] )[ i + 1 ];
+    
+end );
+
+##
+@InstallMethod( ObjectAtOp, 
+          [ IsCategoryOfExactTrianglesObject, IsInt ],
+  function( triangle, i )
+    
+    if (i < 0 || i > 3)
+      
+      Error( "Wrong index!\n" );
+      
+    elseif (i == 3)
+    
+      return Range( MorphismAt( triangle, 2 ) );
+      
+    else
+      
+      return Source( MorphismAt( triangle, i ) );
+      
+    end;
+    
+end );
+
+##
+@InstallMethod( MorphismAtOp, 
+                [ IsCategoryOfExactTrianglesMorphism, IsInt ],
+  function( mu, i )
+    
+    if (i < 0 || i > 3)
+      Error( "Wrong index!\n" );
+    elseif (i == 3)
+      return ShiftOfMorphism( CallFuncListAtRuntime( MorphismDatum, [ CapCategory( mu ), mu ] )[ 1 ] );
+    else
+      return CallFuncListAtRuntime( MorphismDatum, [ CapCategory( mu ), mu ] )[ i + 1 ];
+    end;
+    
+end );
+
+##
+@InstallMethod( ^,
+          [ IsCategoryOfExactTrianglesObject, IsInt ],
+  function( triangle, i )
+    
+    return MorphismAt( triangle, i );
+
+end );
+
+##
+@InstallMethod( getindex,
+          [ IsCategoryOfExactTrianglesObject, IsInt ],
+  function( triangle, i )
+    
+    return ObjectAt( triangle, i );
+
+end );
+
+##
+@InstallMethod( getindex,
+          [ IsCategoryOfExactTrianglesMorphism, IsInt ],
+  function( mu, i )
+    
+    return MorphismAt( mu, i );
+
+end );
+
+##
+@InstallMethod( IsStandardExactTriangle,
+          [ IsCategoryOfExactTrianglesObject ],
+    triangle -> IsEqualForObjects( triangle, StandardExactTriangle( triangle ^ 0 ) )
+);
+
+##
+@InstallMethod( StandardExactTriangle,
+          [ IsCategoryOfExactTrianglesObject ],
+    triangle -> StandardExactTriangle( triangle ^ 0 )
+);
+
+##
+@InstallMethod( ShiftOp,
+          [ IsCategoryOfExactTrianglesObject, IsInt ],
+  function( t, n )
+    local cat, shift_t, st, shift_st, w;
+    
+    cat = CapCategory( t );
+
+    shift_t = ExactTriangle( cat,
+                    CallFuncListAtRuntime( Shift, [ t^0, n ] ),
+                    CallFuncListAtRuntime( Shift, [ t^1, n ] ),
+                    (-1)^n * CallFuncListAtRuntime( Shift, [ t^2, n ] ) );
+    
+    if (HasWitnessIsomorphismIntoStandardExactTriangle( t ) ||
+        HasWitnessIsomorphismFromStandardExactTriangle( t ))
+        
+        st = StandardExactTriangle( t );
+        
+        shift_st = ExactTriangle( cat,
+                      CallFuncListAtRuntime( Shift, [ st^0, n ] ),
+                      CallFuncListAtRuntime( Shift, [ st^1, n ] ),
+                      (-1)^n * CallFuncListAtRuntime( Shift, [ st^2, n ] ) );
+        
+    end;
+    
+    if (@not IsStandardExactTriangle( shift_st ))
+      
+      return shift_t;
+      
+    end;
+   
+    if (HasWitnessIsomorphismIntoStandardExactTriangle( t ))
+      
+      w = WitnessIsomorphismIntoStandardExactTriangle( t );
+      
+      w = MorphismOfExactTriangles(
+                shift_t,
+                Shift( w[ 0 ], n ),
+                Shift( w[ 1 ], n ),
+                Shift( w[ 2 ], n ),
+                shift_st
+              );
+      
+      SetWitnessIsomorphismIntoStandardExactTriangle( shift_t, w );
+      
+    end;
+    
+    if (HasWitnessIsomorphismFromStandardExactTriangle( t ))
+      
+      w = WitnessIsomorphismFromStandardExactTriangle( t );
+      
+      w = MorphismOfExactTriangles(
+                shift_st,
+                Shift( w[ 0 ], n ),
+                Shift( w[ 1 ], n ),
+                Shift( w[ 2 ], n ),
+                shift_t
+              );
+      
+      SetWitnessIsomorphismFromStandardExactTriangle( shift_t, w );
+
+    end;
+    
+    return shift_t;
+    
+end );
+
+##
+@InstallMethod( ShiftOp,
+          [ IsCategoryOfExactTrianglesMorphism, IsInt ],
+  function( mu, n )
+    return MorphismOfExactTriangles(
+                    Shift( Source( mu ), n ),
+                    Shift( mu[ 0 ], n ),
+                    Shift( mu[ 1 ], n ),
+                    Shift( mu[ 2 ], n ),
+                    Shift( Range( mu ), n )
+                  );
+end );
+##  
+##  A ---> B ---> C ---> Σ A
+##
+##  B ---> C ---> Σ A ---> Σ B
+##
+@InstallMethod( Rotation,
+          [ IsCategoryOfExactTrianglesObject ],
+  @FunctionWithNamedArguments(
+  [
+    [ "compute_witnesses", false ],
+  ],
+  function( CAP_NAMED_ARGUMENTS, triangle )
+    local rotation, st_rotation, i, st_triangle, w_1, v_1;
+    
+    rotation = ExactTriangle(
+                  triangle ^ 1,
+                  triangle ^ 2,
+                  AdditiveInverse( ShiftOfMorphism( triangle ^ 0 ) )
+                );
+    
+    if (compute_witnesses)
+      
+      st_rotation = StandardExactTriangle( rotation );
+      
+      if (IsStandardExactTriangle( triangle ))
+        
+        i = WitnessIsomorphismIntoStandardConeObjectByRotationAxiomWithGivenObjects( rotation[ 2 ], triangle ^ 0, st_rotation[ 2 ] );
+        
+        i = MorphismOfExactTriangles( rotation, IdentityMorphism( rotation[ 0 ] ), IdentityMorphism( rotation[ 1 ] ), i, st_rotation );
+        
+        SetWitnessIsomorphismIntoStandardExactTriangle( rotation, i );
+        
+        i = WitnessIsomorphismFromStandardConeObjectByRotationAxiomWithGivenObjects( st_rotation[ 2 ], triangle ^ 0, rotation[ 2 ] );
+        
+        i = MorphismOfExactTriangles( st_rotation, IdentityMorphism( rotation[ 0 ] ), IdentityMorphism( rotation[ 1 ] ), i, rotation );
+        
+        SetWitnessIsomorphismFromStandardExactTriangle( rotation, i );
+        
+      else
+        
+        i = WitnessIsomorphismFromStandardExactTriangle( triangle );
+        
+        st_triangle = Source( i );
+        
+        w_1 = WitnessIsomorphismIntoStandardConeObjectByRotationAxiom( st_triangle ^ 0 );
+        
+        v_1 = MorphismBetweenStandardConeObjects( st_triangle ^ 1, IdentityMorphism( st_triangle[ 1 ] ), i[ 2 ], triangle ^ 1 );
+        
+        i = MorphismOfExactTriangles( rotation, IdentityMorphism( rotation[ 0 ] ), IdentityMorphism( rotation[ 1 ] ), PreCompose( w_1, v_1 ), st_rotation );
+        
+        SetWitnessIsomorphismIntoStandardExactTriangle( rotation, i );
+        
+      end;
+    
+    end;
+    
+    return rotation;
+    
+  end ) );
+
+##  
+##  A ---> B ---> C ---> Σ A
+##
+##  Σ^-1 C  ---> A ---> B ---> Σ Σ^-1 C
+##
+@InstallMethod( InverseRotation,
+          [ IsCategoryOfExactTrianglesObject ],
+  @FunctionWithNamedArguments(
+  [
+    [ "compute_witnesses", false ],
+  ],
+  function( CAP_NAMED_ARGUMENTS, t )
+    local rotation, st_rotation, i, st_t, w_1, v_1;
+    
+    rotation =
+        ExactTriangle(
+              PreCompose(
+                AdditiveInverse( InverseShiftOfMorphism( t ^ 2 ) ),
+                CounitOfShiftAdjunction( t[ 0 ] )
+                        ),
+              t ^ 0,
+              PreCompose(
+                t ^ 1,
+                UnitOfShiftAdjunction( t[ 2 ] )
+                        )
+                    );
+    
+    if (compute_witnesses)
+      
+      st_rotation = StandardExactTriangle( rotation );
+      
+      if (IsStandardExactTriangle( t ))
+        
+        i = WitnessIsomorphismIntoStandardConeObjectByInverseRotationAxiomWithGivenObjects( rotation[ 2 ], t ^ 0, st_rotation[ 2 ] );
+        
+        i = MorphismOfExactTriangles( rotation, IdentityMorphism( rotation[ 0 ] ), IdentityMorphism( rotation[ 1 ] ), i, st_rotation );
+        
+        SetWitnessIsomorphismIntoStandardExactTriangle( rotation, i );
+        
+        i = WitnessIsomorphismFromStandardConeObjectByInverseRotationAxiomWithGivenObjects( st_rotation[ 2 ], t ^ 0, rotation[ 2 ] );
+        
+        i = MorphismOfExactTriangles( st_rotation, IdentityMorphism( rotation[ 0 ] ), IdentityMorphism( rotation[ 1 ] ), i, rotation );
+        
+        SetWitnessIsomorphismFromStandardExactTriangle( rotation, i );
+        
+      else
+        
+        i = WitnessIsomorphismFromStandardExactTriangle( t );
+        
+        st_t = Source( i );
+        
+        w_1 = WitnessIsomorphismIntoStandardConeObjectByInverseRotationAxiom( st_t ^ 0 );
+        
+        v_1 = MorphismBetweenStandardConeObjects(
+                  PreCompose(
+                    AdditiveInverse( InverseShiftOfMorphism( st_t ^ 2 ) ),
+                    CounitOfShiftAdjunction( t[ 0 ] )
+                  ),
+                  InverseShiftOfMorphism( i[ 2 ] ),
+                  IdentityMorphism( t[ 0 ] ),
+                  PreCompose(
+                    AdditiveInverse( InverseShiftOfMorphism( t ^ 2 ) ),
+                    CounitOfShiftAdjunction( t[ 0 ] )
+                  )
+                );
+        
+        i = MorphismOfExactTriangles( rotation, IdentityMorphism( rotation[ 0 ] ), IdentityMorphism( rotation[ 1 ] ), PreCompose( w_1, v_1 ), st_rotation );
+        
+        SetWitnessIsomorphismIntoStandardExactTriangle( rotation, i );
+        
+      end;
+      
+    end;
+    
+    return rotation;
+    
+  end ) );
+
+##
+@InstallMethod( WitnessIsomorphismIntoStandardExactTriangle,
+          [ IsCategoryOfExactTrianglesObject ],
+  function( t )
+    local cat, st_t, i;
+    
+    if (IsStandardExactTriangle( t ))
+      
+      return IdentityMorphism( t );
+      
+    end;
+    
+    # This could happen only if the user manually have set this attribute
+    if (HasWitnessIsomorphismFromStandardExactTriangle( t ))
+      
+      i = WitnessIsomorphismFromStandardExactTriangle( t );
+      
+      return MorphismOfExactTriangles(
+                t,
+                IdentityMorphism( t[ 0 ] ),
+                IdentityMorphism( t[ 1 ] ),
+                Inverse( i[ 2 ] ),
+                Source( i )
+              );
+              
+    end;
+     
+    cat = UnderlyingCategory( CapCategory( t ) );
+    
+    if (@not CanCompute( cat, "WitnessIsomorphismIntoStandardConeObject" ))
+      
+      TryNextMethod( );
+      
+    end;
+    
+    st_t = StandardExactTriangle( t ^ 0 );
+    
+    i = WitnessIsomorphismIntoStandardConeObject( t ^ 0, t ^ 1, t ^ 2 );
+    
+    if (i == fail)
+      
+      return fail;
+      
+    else
+      
+      return MorphismOfExactTriangles(
+                t,
+                IdentityMorphism( t[ 0 ] ),
+                IdentityMorphism( t[ 1 ] ),
+                i,
+                st_t
+              );
+      
+    end;
+    
+end );
+
+##
+@InstallMethod( WitnessIsomorphismFromStandardExactTriangle,
+          [ IsCategoryOfExactTrianglesObject ],
+  function( t )
+    local cat, st_t, i;
+    
+    if (IsStandardExactTriangle( t ))
+      
+      return IdentityMorphism( t );
+      
+    end;
+    
+    i = WitnessIsomorphismIntoStandardExactTriangle( t );
+    
+    if (i == fail)
+      
+      return fail;
+      
+    else
+      
+      return MorphismOfExactTriangles(
+                Range( i ),
+                IdentityMorphism( t[ 0 ] ),
+                IdentityMorphism( t[ 1 ] ),
+                Inverse( i[ 2 ] ),
+                t
+              );
+    
+    end;
+    
+end );
+    
+##    
+@InstallMethod( MorphismBetweenConeObjects,
+          [ IsCategoryOfExactTrianglesObject, IsCapCategoryMorphism, IsCapCategoryMorphism, IsCategoryOfExactTrianglesObject ],
+  function( t_1, mu_0, mu_1, t_2 )
+    local st_t_1, st_t_2, i_1, j_1, i_2, j_2, u, v, w;
+    
+    st_t_1 = StandardExactTriangle( t_1 );
+    
+    st_t_2 = StandardExactTriangle( t_2 );
+    
+    i_1 = WitnessIsomorphismIntoStandardExactTriangle( t_1 );
+    
+    j_1 = WitnessIsomorphismFromStandardExactTriangle( t_1 );
+    
+    i_2 = WitnessIsomorphismIntoStandardExactTriangle( t_2 );
+    
+    j_2 = WitnessIsomorphismFromStandardExactTriangle( t_2 );
+    
+    u = PreCompose( [ j_1[ 0 ], mu_0, i_2[ 0 ] ] );
+    
+    v = PreCompose( [ j_1[ 1 ], mu_1, i_2[ 1 ] ] );
+    
+    w = MorphismBetweenStandardConeObjects(
+            st_t_1 ^ 0,
+            u,
+            v,
+            st_t_2 ^ 0
+          );
+    
+    return PreCompose( [ i_1[ 2 ], w, j_2[ 2 ] ] );
+    
+end );
+
+##
+@InstallMethod( MorphismOfExactTriangles,
+          [ IsCategoryOfExactTrianglesObject, IsCapCategoryMorphism, IsCapCategoryMorphism, IsCategoryOfExactTrianglesObject ],
+  function( t_1, mu_0, mu_1, t_2 )
+    local mu_2;
+    
+    mu_2 = MorphismBetweenConeObjects( t_1, mu_0, mu_1, t_2 );
+    
+    return MorphismOfExactTriangles( t_1, mu_0, mu_1, mu_2, t_2 );
+    
+end );
+
+##
+@InstallMethod( ExactTriangleByOctahedralAxiom,
+          [ IsCategoryOfExactTrianglesObject, IsCategoryOfExactTrianglesObject, IsCategoryOfExactTrianglesObject ],
+  @FunctionWithNamedArguments(
+  [
+    [ "compute_witnesses", false ],
+  ],
+  function( CAP_NAMED_ARGUMENTS, t_1, t_2, t_3 )
+    local cat, i_1, j_1, i_2, j_2, i_3, j_3, t, alpha, iota, pi, triangle, u, v, w, i;
+    
+    cat = CapCategory( t_1 );
+    
+    @Assert( 2, IsEqualForObjects( t_1[ 0 ], t_3[ 0 ] )
+                && IsEqualForObjects( t_2[ 1 ], t_3[ 1 ] )
+                  && IsCongruentForMorphisms( PreCompose( t_1^0, t_2^0 ), t_3^0 ) );
+                  
+    i_1 = WitnessIsomorphismIntoStandardExactTriangle( t_1 );
+    
+    j_1 = WitnessIsomorphismFromStandardExactTriangle( t_1 );
+    
+    i_2 = WitnessIsomorphismIntoStandardExactTriangle( t_2 );
+    
+    j_2 = WitnessIsomorphismFromStandardExactTriangle( t_2 );
+    
+    i_3 = WitnessIsomorphismIntoStandardExactTriangle( t_3 );
+    
+    j_3 = WitnessIsomorphismFromStandardExactTriangle( t_3 );
+    
+    t = ExactTriangleByOctahedralAxiom( t_1 ^ 0, t_2 ^ 0, t_3 ^ 0; compute_witnesses = true );
+    
+    alpha = PreCompose( [ i_1[ 2 ], t ^ 0, j_3[ 2 ] ] );
+    
+    iota = PreCompose( [ i_3[ 2 ], t ^ 1, j_2[ 2 ] ] );
+    
+    pi = PreCompose( [ i_2[ 2 ], t ^ 2, ShiftOfMorphism( j_1[ 2 ] ) ] );
+    
+    triangle = CallFuncListAtRuntime( ExactTriangle, [ cat, alpha, iota, pi ] );
+    
+    if (compute_witnesses)
+      
+      u = i_2[ 2 ];
+      
+      v = WitnessIsomorphismIntoStandardExactTriangle( t )[ 2 ];
+      
+      w = MorphismBetweenStandardConeObjects( t ^ 0, j_1[ 2 ], j_3[ 2 ], triangle ^ 0 );
+      
+      i = MorphismOfExactTriangles(
+              triangle,
+              IdentityMorphism( triangle[ 0 ] ),
+              IdentityMorphism( triangle[ 1 ] ),
+              PreCompose( [ u, v, w ] ),
+              StandardExactTriangle( triangle )
+            );
+            
+      SetWitnessIsomorphismIntoStandardExactTriangle( triangle, i );
+      
+    end;
+    
+    @Assert( 2, IsWellDefined( triangle ) && IsWellDefined( t_1 ) && IsWellDefined( t_2 ) && IsWellDefined( t_3 ) &&
+                IsCongruentForMorphisms( PreCompose( t_1^1, triangle^0 ), PreCompose( t_2^0, t_3^1 ) ) &&
+                  IsCongruentForMorphisms( t_1^2, PreCompose( triangle^0, t_3^2 ) ) &&
+                    IsCongruentForMorphisms( PreCompose( t_3^1, triangle^1 ), t_2^1 ) &&
+                      IsCongruentForMorphisms( PreCompose( triangle^1, t_2^2 ), PreCompose(t_3^2, Shift( t_1^0, 1 ) ) ) &&
+                        IsCongruentForMorphisms( PreCompose( t_2^2, Shift( t_1^1, 1 ) ), triangle^2 )
+                );
+                
+    return triangle;
+    
+  end ) );
+
+#################
+#
+# Display
+#
+#################
+
+##
+@InstallMethod( ViewExactTriangle,
+          [ IsCategoryOfExactTrianglesObject ],
+  function( T )
+    local str;
+    
+    str = "       T ^ 0          T ^ 1          T ^ 2              \n";
+    str = @Concatenation( str, "T[ 0 ] ------> T[ 1 ] ------> T[ 2 ] ------> Σ( T[ 0 ] )\n" );
+    
+    str = @Concatenation( str, "\n", TextAttr.b6, "T[ 0 ]:", TextAttr.reset, "\n\n" );
+    str = @Concatenation( str, ViewString( T[ 0 ] ) );
+    
+    str = @Concatenation( str, "\n", TextAttr.b6, "T ^ 0:", TextAttr.reset, "\n\n" );
+    str = @Concatenation( str, ViewString( T ^ 0 ) );
+    
+    str = @Concatenation( str, "\n", TextAttr.b6, "T[ 1 ]:", TextAttr.reset, "\n\n" );
+    str = @Concatenation( str, ViewString( T[ 1 ] ) );
+    
+    str = @Concatenation( str, "\n", TextAttr.b6, "T ^ 1:", TextAttr.reset, "\n\n" );
+    str = @Concatenation( str, ViewString( T ^ 1 ) );
+    
+    str = @Concatenation( str, "\n", TextAttr.b6, "T[ 2 ]:", TextAttr.reset, "\n\n" );
+    str = @Concatenation( str, ViewString( T[ 2 ] ) );
+    
+    str = @Concatenation( str, "\n", TextAttr.b6, "T ^ 2:", TextAttr.reset, "\n\n" );
+    str = @Concatenation( str, ViewString( T ^ 2 ) );
+    
+    str = @Concatenation( str, "\n", TextAttr.b6, "Σ( T[ 0 ] ):", TextAttr.reset, "\n\n" );
+    str = @Concatenation( str, ViewString( T[ 3 ] ) );
+    
+    return str;
+    
+end );
+
+##
+@InstallMethod( ViewMorphismOfExactTriangles,
+          [ IsCategoryOfExactTrianglesMorphism ],
+  function( mu )
+    local str;
+    
+    str = "A morphism of exact triangles\n\n";
+    str = @Concatenation( str, "T[0] ------> T[1] ------> T[2] ------> Σ( T[0] )      \n" );
+    str = @Concatenation( str, " |            |            |              |           \n" );
+    str = @Concatenation( str, " | mu[0]      | mu[1]      | mu[2]        | Σ( mu[0] )\n" );
+    str = @Concatenation( str, " V            V            V              V           \n" );
+    str = @Concatenation( str, "Q[0] ------> Q[1] ------> Q[2] ------> Σ( Q[0] )      \n" );
+    
+    str = @Concatenation( str, "\n\nmu[ 0 ]:\n\n" );
+    str = @Concatenation( str, ViewString( mu[ 0 ] ) );
+    
+    str = @Concatenation( str, "\n\nmu[ 1 ]:\n\n" );
+    str = @Concatenation( str, ViewString( mu[ 1 ] ) );
+    
+    str = @Concatenation( str, "\n\nmu[ 2 ]:\n\n" );
+    str = @Concatenation( str, ViewString( mu[ 2 ] ) );
+    
+    str = @Concatenation( str, "\n\nmu[ 3 ]:\n\n" );
+    str = @Concatenation( str, ViewString( mu[ 3 ] ) );
+    
+    return str;
+    
+end );
+
+##
+@InstallMethod( DisplayString,
+          [ IsCategoryOfExactTrianglesObject ],
+  function( T )
+    local str;
+    
+    str = "       T ^ 0          T ^ 1          T ^ 2              \n";
+    str = @Concatenation( str, "T[ 0 ] ------> T[ 1 ] ------> T[ 2 ] ------> Σ( T[ 0 ] )\n" );
+    
+    str = @Concatenation( str, "\n", TextAttr.b6, "T[ 0 ]:", TextAttr.reset, "\n\n" );
+    str = @Concatenation( str, DisplayString( T[ 0 ] ) );
+    
+    str = @Concatenation( str, "\n", TextAttr.b6, "T ^ 0:", TextAttr.reset, "\n\n" );
+    str = @Concatenation( str, DisplayString( T ^ 0 ) );
+    
+    str = @Concatenation( str, "\n", TextAttr.b6, "T[ 1 ]:", TextAttr.reset, "\n\n" );
+    str = @Concatenation( str, DisplayString( T[ 1 ] ) );
+    
+    str = @Concatenation( str, "\n", TextAttr.b6, "T ^ 1:", TextAttr.reset, "\n\n" );
+    str = @Concatenation( str, DisplayString( T ^ 1 ) );
+    
+    str = @Concatenation( str, "\n", TextAttr.b6, "T[ 2 ]:", TextAttr.reset, "\n\n" );
+    str = @Concatenation( str, DisplayString( T[ 2 ] ) );
+    
+    str = @Concatenation( str, "\n", TextAttr.b6, "T ^ 2:", TextAttr.reset, "\n\n" );
+    str = @Concatenation( str, DisplayString( T ^ 2 ) );
+    
+    str = @Concatenation( str, "\n", TextAttr.b6, "Σ( T[ 0 ] ):", TextAttr.reset, "\n\n" );
+    str = @Concatenation( str, DisplayString( T[ 3 ] ) );
+    
+    return str;
+    
+end );
+
+##
+@InstallMethod( DisplayString,
+          [ IsCategoryOfExactTrianglesMorphism ],
+  function( mu )
+    local str;
+    
+    str = "A morphism of exact triangles\n\n";
+    str = @Concatenation( str, "T[0] ------> T[1] ------> T[2] ------> Σ( T[0] )      \n" );
+    str = @Concatenation( str, " |            |            |              |           \n" );
+    str = @Concatenation( str, " | mu[0]      | mu[1]      | mu[2]        | Σ( mu[0] )\n" );
+    str = @Concatenation( str, " V            V            V              V           \n" );
+    str = @Concatenation( str, "Q[0] ------> Q[1] ------> Q[2] ------> Σ( Q[0] )      \n" );
+    
+    str = @Concatenation( str, "\n", TextAttr.b6, "mu[ 0 ]:", TextAttr.reset, "\n\n" );
+    str = @Concatenation( str, DisplayString( mu[ 0 ] ) );
+    
+    str = @Concatenation( str, "\n", TextAttr.b6, "mu[ 1 ]:", TextAttr.reset, "\n\n" );
+    str = @Concatenation( str, DisplayString( mu[ 1 ] ) );
+    
+    str = @Concatenation( str, "\n", TextAttr.b6, "mu[ 2 ]:", TextAttr.reset, "\n\n" );
+    str = @Concatenation( str, DisplayString( mu[ 2 ] ) );
+    
+    str = @Concatenation( str, "\n", TextAttr.b6, "mu[ 3 ]:", TextAttr.reset, "\n\n" );
+    str = @Concatenation( str, DisplayString( mu[ 3 ] ) );
+    
+    return str;
+    
+end );
+

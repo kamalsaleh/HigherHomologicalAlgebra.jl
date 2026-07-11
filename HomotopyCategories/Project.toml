@@ -1,0 +1,55 @@
+name = "HomotopyCategories"
+uuid = "f0c53ac8-2cb1-47b4-9ede-2340aeeefb7b"
+authors = [
+	"Kamal Saleh <kamal.saleh@uni-siegen.de>"
+]
+
+# Transpiled from GAP's HomotopyCategories v2026.07-01
+version = "0.1.0"
+
+[deps]
+CAP = "d64df2ee-d2bb-46f4-8cbc-f03bb858f8cb"
+MatricesForHomalg = "29b9b1b6-efa6-450e-8188-a5a2c25df071"
+LinearAlgebraForCAP = "3dc4824f-14ac-4ab7-8a60-75dbcd4a9d60"
+QuotientCategories = "c103c924-3523-4680-a691-c88f3312ec70"
+LinearClosuresForCAP = "1f080b7b-ff6a-46b3-9ade-986f655adc86"
+AdditiveClosuresForCAP = "bbee75d5-3cb4-4478-8ae7-eddc7864e69e"
+FpCategories = "b9f20f1b-1226-4811-b6a0-b2e47a225553"
+FpLinearCategories = "607c1b85-d155-426e-91c9-9defd76aa9e1"
+PresheafCategories = "7356a560-9b13-4027-8f83-9f0b8f55db70"
+ComplexesCategories = "25740295-7925-405d-8250-6795ea33aeec"
+TriangulatedCategories = "7529282d-5a2e-4f9e-a096-9460618321a6"
+SubcategoriesForCAP = "54e686c7-8599-4fba-8d83-06e8ab9e4db3"
+FreydCategoriesForCAP = "cec356e3-7627-4f73-8308-af32cbf46c2b"
+FiniteCocompletions = "908ca681-a438-4f45-a9ca-a80846b18011"
+FunctorCategories = "019ed0a3-ec8b-7b2c-b938-de216bf4c7f6"
+
+[weakdeps]
+
+[extensions]
+
+[compat]
+CAP = "~0.8.10"
+MatricesForHomalg = "~0.1.11"
+LinearAlgebraForCAP = "~0.2.3"
+AdditiveClosuresForCAP = "~0.2.4"
+LinearClosuresForCAP = "~0.2.3"
+FpCategories = "~0.1.13"
+FpLinearCategories = "~0.2.3"
+PresheafCategories = "~0.1.5"
+ComplexesCategories = "~0.1.0"
+TriangulatedCategories = "~0.1.0"
+QuotientCategories = "~0.2.3"
+SubcategoriesForCAP = "~0.1.1"
+FreydCategoriesForCAP = "~0.2.4"
+FiniteCocompletions = "0.1"
+FunctorCategories = "0.1"
+julia = "1.11"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Singular = "bcd08a7b-43d2-5ff7-b6d4-c458787f915c"
+
+[targets]
+test = ["Test", "Documenter", "Singular"]
