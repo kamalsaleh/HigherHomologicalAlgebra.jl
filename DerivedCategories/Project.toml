@@ -4,8 +4,8 @@ authors = [
 	"Kamal Saleh <kamal.saleh@uni-siegen.de>"
 ]
 
-# Transpiled from GAP's DerivedCategories v2026.07-02
-version = "0.1.0"
+# Transpiled from GAP's DerivedCategories v2026.07-03
+version = "0.1.1"
 
 [deps]
 MatricesForHomalg = "29b9b1b6-efa6-450e-8188-a5a2c25df071"
