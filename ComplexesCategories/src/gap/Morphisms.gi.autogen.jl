@@ -349,7 +349,7 @@ end );
     function ( CAP_NAMED_ARGUMENTS, phi, l, u )
       local s, i;
       
-      if (OnlyDatum)
+      if (OnlyDatum == true)
         
         s = @Concatenation( "\\begin", LATEX_LBRACE, "array", LATEX_RBRACE, LATEX_LBRACE, "lc", LATEX_RBRACE, "\n " );
         
