@@ -1,10 +1,10 @@
 #!/usr/bin/env julia
 # Convert a jldoctest .md file to a Jupyter notebook (.ipynb)
-# Usage: julia md_to_notebook.jl path/to/file.md [output.ipynb]
+# Usage: julia md_to_notebook.jl path/to/file.md [path/to/file.ipynb]
 
 using JSON3
 
-function md_to_notebook(md_file, out_file = replace(md_file, r"\.md$" => ".ipynb"))
+function md_to_notebook(md_file, out_file = joinpath(dirname(md_file), "..", "..", "notebooks", replace(basename(md_file), r"\.md$" => ".ipynb")))
     
     src = read(md_file, String)
     
@@ -78,6 +78,15 @@ function md_to_notebook(md_file, out_file = replace(md_file, r"\.md$" => ".ipynb
         "nbformat_minor" => 5
     )
     
+    if isfile(out_file)
+        print("\"$out_file\" already exists. Overwrite? [y/N] ")
+        answer = readline()
+        if !occursin(r"^[yY]", answer)
+            println("Aborted.")
+            return nothing
+        end
+    end
+
     open(out_file, "w") do f
         JSON3.pretty(f, nb)
     end
@@ -88,5 +97,5 @@ end
 
 if abspath(PROGRAM_FILE) == @__FILE__
     isempty(ARGS) && error("Usage: julia md_to_notebook.jl file.md [output.ipynb]")
-    md_to_notebook(ARGS[1], length(ARGS) >= 2 ? ARGS[2] : replace(ARGS[1], r"\.md$" => ".ipynb"))
+    md_to_notebook(ARGS[1], length(ARGS) >= 2 ? ARGS[2] : joinpath(dirname(ARGS[1]), "..", "..", "notebooks", replace(basename(ARGS[1]), r"\.md$" => ".ipynb")))
 end
